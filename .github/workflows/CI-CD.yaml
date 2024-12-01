@@ -191,7 +191,7 @@ jobs:
           zip -r source-code-${{ env.latest_version }}.zip ./backend ./frontend
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: source-code-${{ env.latest_version }}
           path: source-code-${{ env.latest_version }}.zip
