@@ -77,17 +77,23 @@ jobs:
         run: |
           # Fetch existing tags from Docker Hub
           latest_tag=$(curl -s "https://registry.hub.docker.com/v2/repositories/${{ secrets.DOCKER_USERNAME }}/general-utils/tags/?page_size=1" | jq -r '.results[0].name')
-
+          
           # Default starting version
           default_version="v0.1.0"
-
+          
           # Function to increment version
           increment_version() {
-            local version=$1
+            local version="${1:-$default_version}"
+          
+            # Ensure version starts with v and has three segments
+            if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              version=$default_version
+            fi
+          
             local major=$(echo "$version" | cut -d'.' -f1 | sed 's/v//')
             local minor=$(echo "$version" | cut -d'.' -f2)
             local patch=$(echo "$version" | cut -d'.' -f3)
-
+          
             if [ "$patch" -lt 9 ]; then
               patch=$((patch+1))
               new_version="v$major.$minor.$patch"
@@ -101,19 +107,14 @@ jobs:
               patch=0
               new_version="v$major.$minor.$patch"
             fi
-
-            echo "********* The new version is *********"
+          
             echo "$new_version"
-            echo "**************************************"
           }
-
+          
           # Determine new version
-          if [ -z "$latest_tag" ] || [ "$latest_tag" = "latest" ]; then
-            version=$default_version
-          else
-            version=$(increment_version "$latest_tag")
-          fi
-
+          version=$(increment_version "$latest_tag")
+          
+          echo "Generated Version: $version"
           echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Tag and Push Docker Compose Image
