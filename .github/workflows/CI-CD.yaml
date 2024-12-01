@@ -43,10 +43,10 @@ jobs:
       - name: Commit and push changes
         if: steps.check_changes.outputs.changes_exist == 'true'
         env:
-          GITHUB_TOKEN: ${{ secrets.GENERAL_UTILS_GITHUB_ACCESS_TOKEN }}
+          GENERAL_UTILS_GITHUB_ACCESS_TOKEN: ${{ secrets.GENERAL_UTILS_GITHUB_ACCESS_TOKEN }}
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add ProjectTree.md
           git commit -m "Update project tree structure." -m "Automated update of project structure." --author="GitHub Action <action@github.com>"
-          git push
+          git push https://${{ secrets.GENERAL_UTILS_GITHUB_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
