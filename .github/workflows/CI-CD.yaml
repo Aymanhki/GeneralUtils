@@ -102,7 +102,9 @@ jobs:
               new_version="v$major.$minor.$patch"
             fi
 
+            echo "********* The new version is *********"
             echo "$new_version"
+            echo "**************************************"
           }
 
           # Determine new version
