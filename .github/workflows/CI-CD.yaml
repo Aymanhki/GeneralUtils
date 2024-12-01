@@ -166,9 +166,8 @@ jobs:
 
       - name: Tag and Push Docker Images
         run: |
-          docker buildx build --push -t ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:${{ steps.backend-versioning.outputs.version }} ./backend
-          docker buildx build --push -t ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:${{ steps.frontend-versioning.outputs.version }} ./frontend
-          
+          docker buildx build --push -t ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:${{ steps.backend-versioning.outputs.version }}  -t ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:latest ./backend
+          docker buildx build --push -t ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:${{ steps.frontend-versioning.outputs.version }} -t ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:latest ./frontend
 
       - name: Determine Latest Version
         id: determine-version
@@ -205,4 +204,21 @@ jobs:
             This release includes:
             - Frontend version: `${{ steps.frontend-versioning.outputs.version }}`
             - Backend version: `${{ steps.backend-versioning.outputs.version }}`
+
+
+  deploy-to-ecs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to ECS
+        run: |
+          aws ecs register-task-definition --cli-input-json file://infrastructure/ecs-task-definition.json
+          aws ecs update-service --cluster general-utils-app-cluster --service general-utils-app-service --launch-type FARGATE --force-new-deployment
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
 
