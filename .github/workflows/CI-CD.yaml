@@ -165,10 +165,25 @@ jobs:
 
       - name: Tag and Push Docker Images
         run: |
-            docker buildx build --platform linux/amd64,linux/arm64 -t ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:${{ steps.backend-versioning.outputs.version }} ./backend
-            docker buildx build --platform linux/amd64,linux/arm64 -t ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:${{ steps.frontend-versioning.outputs.version }} ./frontend
+            docker buildx build -t ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:${{ steps.backend-versioning.outputs.version }} ./backend
+            docker buildx build -t ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:${{ steps.frontend-versioning.outputs.version }} ./frontend
             docker push ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:${{ steps.backend-versioning.outputs.version }}
             docker push ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:${{ steps.frontend-versioning.outputs.version }}
           
-          
+      - name: Create Release with the new images
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ./backend
+            ./frontend
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ steps.backend-versioning.outputs.version }}
+          release_name: ${{ steps.backend-versioning.outputs.version }}
+          body: |
+            This release contains the latest version of the backend and frontend images.
+            The backend image is tagged as ${{ steps.backend-versioning.outputs.version }}.
+            The frontend image is tagged as ${{ steps.frontend-versioning.outputs.version }}.
+          draft: false
+          prerelease: false
+
 
