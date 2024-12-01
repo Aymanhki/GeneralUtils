@@ -1,0 +1,49 @@
+{
+  "family": "general-utils-app-service",
+  "containerDefinitions": [
+    {
+      "name": "frontend",
+      "image": "aymanhki/general-utils-frontend:latest",
+      "memory": 512,
+      "cpu": 256,
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 80,
+          "hostPort": 80
+        },
+        {
+          "containerPort": 443,
+          "hostPort": 443
+        },
+        {
+          "containerPort": 3000,
+          "hostPort": 3000
+        },
+        {
+          "containerPort": 5173,
+          "hostPort": 5173
+        }
+      ]
+    },
+    {
+      "name": "backend",
+      "image": "aymanhki/general-utils-backend:latest",
+      "memory": 512,
+      "cpu": 256,
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "hostPort": 8080
+        }
+      ]
+    }
+  ],
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "512",
+  "memory": "1024"
+}
