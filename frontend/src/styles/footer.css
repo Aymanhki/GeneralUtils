@@ -1,0 +1,11 @@
+.footer {
+    display: flex;
+    align-content: space-between;
+    align-items: center;
+    padding: 2rem;
+    box-shadow: 0 0 1rem var(--color-2);
+}
+
+.copyright {
+    font-size: xx-small;
+}

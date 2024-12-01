@@ -1,0 +1,107 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    letter-spacing: 0.2rem;
+    line-height: 1.5;
+}
+
+:root {
+    --color-1: #ffffff;
+    --color-2: #022b59;
+
+    --font-family-headers: Courier, Futura, monospace, serif;
+    --font-family-text: Futura, sans-serif;
+
+    --z-index-1: 1000;
+    --z-index-2: 2000;
+    --z-index-3: 3000;
+
+    --transition-duration: 0.3s;
+    --transition-ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+    font-family: var(--font-family-headers), serif;
+}
+
+body {
+    background-color: var(--color-1);
+    color: var(--color-2);
+}
+
+button {
+    background-color: var(--color-2);
+    color: var(--color-1);
+    font-family: var(--font-family-headers), serif;
+    font-weight: bold;
+    font-size: large;
+    border: none;
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+    border-radius: 1rem;
+    transition: background-color var(--transition-duration) var(--transition-ease);
+    margin: 1rem;
+
+}
+
+button:hover {
+    filter: drop-shadow(0 0 1rem var(--color-2));
+    box-shadow: 0 0 0.5rem var(--color-2);
+    transition: filter var(--transition-duration) var(--transition-ease);
+}
+
+a {
+    color: var(--color-2);
+    text-decoration: none;
+    transition: color var(--transition-duration) var(--transition-ease);
+}
+
+:focus {
+    outline: none;
+}
+
+a:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.3rem;
+    font-weight: bold;
+    filter: drop-shadow(0 0 1rem var(--color-2));
+}
+
+p {
+    font-family: var(--font-family-text), sans-serif;
+}
+
+.page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-1: #022b59;
+        --color-2: #ffffff;
+    }
+}
+
+@media (max-width: 1264px) {
+    button {
+        font-size: medium;
+        padding: 0.5rem 0.8rem;
+        margin: 0.5rem;
+    }
+
+    * {
+        letter-spacing: 0.1rem;
+    }
+
+}
+
+@media (max-width: 960px) {
+    button {
+        font-size: small;
+        padding: 0.4rem 0.6rem;
+        margin: 0.3rem;
+    }
+}

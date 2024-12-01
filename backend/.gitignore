@@ -1,0 +1,29 @@
+# Ignore target folder where build artifacts are stored
+/target/
+
+# Ignore Cargo.lock for libraries (not necessary for binary projects)
+/Cargo.lock
+
+# Ignore all files created by Cargo that shouldn't be versioned
+/.cargo/
+
+# Ignore temporary editor and IDE files
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Ignore build directories and configuration files specific to some IDEs
+*.log
+*.bak
+*.tmp
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore Rust coverage and profiling files
+*.profraw
+*.profdata
+
+.env

@@ -1,0 +1,15 @@
+[package]
+name = "backend"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-web = "4.9.0"
+actix-web-httpauth = "0.8.2"
+actix-cors = "0.7.0"
+serde_json = "1.0.133"
+tokio = { version = "1", features = ["full"] }
+tokio-postgres = "0.7.12"
+dotenv = "0.15.0"
+sqlx = { version = "0.8.2", features = ["runtime-tokio", "macros", "postgres", "tls-rustls"] }
+serde = { version = "1.0.215", features = ["derive"] }
