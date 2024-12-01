@@ -1,0 +1,52 @@
+name: Update Project Tree
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'ProjectTree.md'
+
+jobs:
+  update-project-tree:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up tree
+        run: sudo apt-get update && sudo apt-get install -y tree
+
+      - name: Generate Project Tree
+        run: |
+          # Create a function to format the tree output for Markdown
+          format_tree_for_markdown() {
+            tree -L 4 -I 'target|node_modules' | sed 's/^/    /'
+          }
+          
+          # Generate the tree
+          echo "# Project Structure" > ProjectTree.md
+          echo "\`\`\`" >> ProjectTree.md
+          format_tree_for_markdown >> ProjectTree.md
+          echo "\`\`\`" >> ProjectTree.md
+          echo "The command that was used to generate this tree is:" >> ProjectTree.md
+          echo "\`\`\`" >> ProjectTree.md
+          echo "tree -L 4 -I 'target|node_modules'" >> ProjectTree.md
+          echo "\`\`\`" >> ProjectTree.md
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          git diff --quiet ProjectTree.md || echo "changes_exist=true" >> $GITHUB_OUTPUT
+
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.changes_exist == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GENERAL_UTILS_GITHUB_ACCESS_TOKEN }}
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add ProjectTree.md
+          git commit -m "Update project tree structure." -m "Automated update of project structure." --author="GitHub Action <action@github.com>"
+          git push
