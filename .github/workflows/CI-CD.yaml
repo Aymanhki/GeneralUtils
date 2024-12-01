@@ -56,7 +56,7 @@ jobs:
 
 
 
-  build-and-push-docker-compose-image-to-docker-hub:
+  build-and-push-docker-images-to-docker-hub:
     runs-on: ubuntu-latest
 
     steps:
@@ -72,14 +72,14 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Generate Version Number
-        id: versioning
+      - name: Generate Backend Version Number
+        id: backend-versioning
         run: |
           # Fetch existing tags from Docker Hub
-          latest_tag=$(curl -s "https://registry.hub.docker.com/v2/repositories/${{ secrets.DOCKER_USERNAME }}/general-utils/tags/?page_size=1" | jq -r '.results[0].name')
+          latest_tag=$(curl -s "https://registry.hub.docker.com/v2/repositories/${{ secrets.DOCKER_USERNAME }}/general-utils-backend/tags/?page_size=1" | jq -r '.results[0].name')
           
           # Default starting version
-          default_version="v0.1.0"
+          default_version="v0.0.0"
           
           # Function to increment version
           increment_version() {
@@ -117,19 +117,58 @@ jobs:
           echo "Generated Version: $version"
           echo "version=$version" >> $GITHUB_OUTPUT
 
-      - name: Tag and Push Docker Compose Image
+      - name: Generate Frontend Version Number
+        id: frontend-versioning
         run: |
-          docker compose build
-          docker tag general-utils ${{ secrets.DOCKER_USERNAME }}/general-utils:${{ steps.versioning.outputs.version }}
-          docker push ${{ secrets.DOCKER_USERNAME }}/general-utils:${{ steps.versioning.outputs.version }}
+          # Fetch existing tags from Docker Hub
+          latest_tag=$(curl -s "https://registry.hub.docker.com/v2/repositories/${{ secrets.DOCKER_USERNAME }}/general-utils-frontend/tags/?page_size=1" | jq -r '.results[0].name')
+          
+          # Default starting version
+          default_version="v0.0.0"
+          
+          # Function to increment version
+          increment_version() {
+            local version="${1:-$default_version}"
+          
+            # Ensure version starts with v and has three segments
+            if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              version=$default_version
+            fi
+          
+            local major=$(echo "$version" | cut -d'.' -f1 | sed 's/v//')
+            local minor=$(echo "$version" | cut -d'.' -f2)
+            local patch=$(echo "$version" | cut -d'.' -f3)
+          
+            if [ "$patch" -lt 9 ]; then
+              patch=$((patch+1))
+              new_version="v$major.$minor.$patch"
+            elif [ "$minor" -lt 9 ]; then
+              minor=$((minor+1))
+              patch=0
+              new_version="v$major.$minor.$patch"
+            else
+              major=$((major+1))
+              minor=0
+              patch=0
+              new_version="v$major.$minor.$patch"
+            fi
+          
+            echo "$new_version"
+          }
+          
+          # Determine new version
+          version=$(increment_version "$latest_tag")
+          
+          echo "Generated Version: $version"
+          echo "version=$version" >> $GITHUB_OUTPUT
 
-      - name: Create Docker Compose Artifact
+
+      - name: Tag and Push Docker Images
         run: |
-          mkdir -p docker-compose-artifacts
-          cp docker-compose.yaml docker-compose-artifacts/docker-compose-${{ steps.versioning.outputs.version }}.yaml
+            docker buildx build --platform linux/amd64,linux/arm64 -t ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:${{ steps.backend-versioning.outputs.version }} ./backend
+            docker buildx build --platform linux/amd64,linux/arm64 -t ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:${{ steps.frontend-versioning.outputs.version }} ./frontend
+            docker push ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:${{ steps.backend-versioning.outputs.version }}
+            docker push ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:${{ steps.frontend-versioning.outputs.version }}
+          
+          
 
-      - name: Upload Docker Compose Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-compose-files
-          path: docker-compose-artifacts/
