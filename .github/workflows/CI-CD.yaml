@@ -9,6 +9,9 @@ on:
 
 jobs:
   update-project-tree:
+    permissions:
+      contents: write
+
     runs-on: ubuntu-latest
 
     steps:
