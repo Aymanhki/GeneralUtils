@@ -269,7 +269,7 @@ jobs:
             "containerDefinitions": [
               {
                 "name": "frontend",
-                "executionRoleArn":arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:user/github-actions-user
+                "executionRoleArn":arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:user/github-actions-user",
                 "image": "${{ secrets.ECR_REPO_URI }}/general-utils/frontend:latest",
                 "memory": 512,
                 "cpu": 256,
