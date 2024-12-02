@@ -56,7 +56,9 @@ jobs:
 
 
 
-  build-and-push-docker-images-to-docker-hub:
+
+
+  build-and-push-images:
     needs: update-project-tree
     runs-on: ubuntu-latest
 
@@ -66,12 +68,6 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Generate Backend Version Number
         id: backend-versioning
@@ -113,6 +109,7 @@ jobs:
           
           echo "Generated Version: $version"
           echo "version=$version" >> $GITHUB_OUTPUT
+
 
 
       - name: Generate Frontend Version Number
@@ -157,11 +154,42 @@ jobs:
           echo "version=$version" >> $GITHUB_OUTPUT
 
 
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Tag and Push Docker Images
+      - name: Login to AWS ECR
         run: |
-          docker buildx build --push -t ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:latest  -t ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:${{ steps.backend-versioning.outputs.version }}  ./backend
-          docker buildx build --push -t ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:latest  -t ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:${{ steps.frontend-versioning.outputs.version }} ./frontend
+          aws ecr get-login-password --region ${{secrets.AWS_REGION}} | docker login --username AWS --password-stdin ${{ secrets.ECR_REPO_URI }}
+
+      - name: Build Docker Images
+        run: |
+          docker buildx build -t backend:latest -t backend:${{ steps.backend-versioning.outputs.version }} ./backend
+          docker buildx build -t frontend:latest -t frontend:${{ steps.frontend-versioning.outputs.version }} ./frontend
+
+      - name: Tag and Push Docker Images to Docker Hub
+        run: |
+          docker tag backend:latest ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:latest
+          docker tag backend:${{ steps.backend-versioning.outputs.version }} ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:${{ steps.backend-versioning.outputs.version }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:${{ steps.backend-versioning.outputs.version }}
+          docker tag frontend:latest ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:latest
+          docker tag frontend:${{ steps.frontend-versioning.outputs.version }} ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:${{ steps.frontend-versioning.outputs.version }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:${{ steps.frontend-versioning.outputs.version }}
+
+      - name: Tag and Push Docker Images to AWS ECR
+        run: |
+          docker tag backend:latest ${{ secrets.ECR_REPO_URI }}/general-utils/backend:latest
+          docker tag backend:${{ steps.backend-versioning.outputs.version }} ${{ secrets.ECR_REPO_URI }}/general-utils/backend:${{ steps.backend-versioning.outputs.version }}
+          docker push ${{ secrets.ECR_REPO_URI }}/general-utils/backend:latest
+          docker push ${{ secrets.ECR_REPO_URI }}/general-utils/backend:${{ steps.backend-versioning.outputs.version }}
+          docker tag frontend:latest ${{ secrets.ECR_REPO_URI }}/general-utils/frontend:latest
+          docker tag frontend:${{ steps.frontend-versioning.outputs.version }} ${{ secrets.ECR_REPO_URI }}/general-utils/frontend:${{ steps.frontend-versioning.outputs.version }}
+          docker push ${{ secrets.ECR_REPO_URI }}/general-utils/frontend:latest
+          docker push ${{ secrets.ECR_REPO_URI }}/general-utils/frontend:${{ steps.frontend-versioning.outputs.version }}
 
 
       - name: Determine Latest Version
@@ -204,8 +232,9 @@ jobs:
 
 
 
+
   deploy-to-ecs:
-    needs: build-and-push-docker-images-to-docker-hub
+    needs: build-and-push-images
     runs-on: ubuntu-latest
 
     steps:
@@ -225,7 +254,61 @@ jobs:
           unzip awscliv2.zip
           sudo ./aws/install --update
 
+      - name: Create ecs-task-definition.json
+        run: |
+          cat <<EOF > ecs-task-definition.json
+          {
+            "family": "general-utils-app-service",
+            "containerDefinitions": [
+              {
+                "name": "frontend",
+                "image": "${{ secrets.ECR_REPO_URI }}/general-utils/frontend:latest",
+                "memory": 512,
+                "cpu": 256,
+                "essential": true,
+                "portMappings": [
+                  {
+                    "containerPort": 80,
+                    "hostPort": 80
+                  },
+                  {
+                    "containerPort": 443,
+                    "hostPort": 443
+                  },
+                  {
+                    "containerPort": 3000,
+                    "hostPort": 3000
+                  },
+                  {
+                    "containerPort": 5173,
+                    "hostPort": 5173
+                  }
+                ]
+              },
+              {
+                "name": "backend",
+                "image": "${{ secrets.ECR_REPO_URI }}/general-utils/backend:latest",
+                "memory": 512,
+                "cpu": 256,
+                "essential": true,
+                "portMappings": [
+                  {
+                    "containerPort": 8080,
+                    "hostPort": 8080
+                  }
+                ]
+              }
+            ],
+            "networkMode": "awsvpc",
+            "requiresCompatibilities": [
+              "FARGATE"
+            ],
+            "cpu": "512",
+            "memory": "1024"
+          }
+          EOF
+
       - name: Deploy to ECS
         run: |
-          aws ecs register-task-definition --cli-input-json file://infrastructure/ecs-task-definition.json
+          aws ecs register-task-definition --cli-input-json file://ecs-task-definition.json
           aws ecs update-service --cluster general-utils-app-cluster --service general-utils-app-service --force-new-deployment
