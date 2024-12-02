@@ -88,9 +88,7 @@ jobs:
           
             # Ensure version starts with v and has three segments
             if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "Fetched Version: $version"
               version=$default_version
-              echo "Invalid version format. Using default version: $version"
             fi
           
             local major=$(echo "$version" | cut -d'.' -f1 | sed 's/v//')
@@ -135,9 +133,7 @@ jobs:
           
             # Ensure version starts with v and has three segments
             if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "Fetched Version: $version"
               version=$default_version
-              echo "Invalid version format. Using default version: $version"
             fi
           
             local major=$(echo "$version" | cut -d'.' -f1 | sed 's/v//')
@@ -171,8 +167,8 @@ jobs:
 
       - name: Tag and Push Docker Images
         run: |
-          docker buildx build --push -t ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:${{ steps.backend-versioning.outputs.version }}  -t ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:latest ./backend
-          docker buildx build --push -t ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:${{ steps.frontend-versioning.outputs.version }} -t ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:latest ./frontend
+          docker buildx build --push -t ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:latest  -t ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:${{ steps.backend-versioning.outputs.version }}  ./backend
+          docker buildx build --push -t ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:latest  -t ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:${{ steps.frontend-versioning.outputs.version }} ./frontend
 
       - name: Determine Latest Version
         id: determine-version
