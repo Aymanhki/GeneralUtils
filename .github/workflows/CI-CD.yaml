@@ -88,7 +88,9 @@ jobs:
           
             # Ensure version starts with v and has three segments
             if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "Fetched Version: $version"
               version=$default_version
+              echo "Invalid version format. Using default version: $version"
             fi
           
             local major=$(echo "$version" | cut -d'.' -f1 | sed 's/v//')
@@ -133,7 +135,9 @@ jobs:
           
             # Ensure version starts with v and has three segments
             if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "Fetched Version: $version"
               version=$default_version
+              echo "Invalid version format. Using default version: $version"
             fi
           
             local major=$(echo "$version" | cut -d'.' -f1 | sed 's/v//')
