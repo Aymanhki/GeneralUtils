@@ -266,10 +266,10 @@ jobs:
           cat <<EOF > ecs-task-definition.json
           {
             "family": "general-utils-app-service",
+            "executionRoleArn":arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:user/github-actions-user",
             "containerDefinitions": [
               {
                 "name": "frontend",
-                "executionRoleArn":arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:user/github-actions-user",
                 "image": "${{ secrets.ECR_REPO_URI }}/general-utils/frontend:latest",
                 "memory": 512,
                 "cpu": 256,
