@@ -267,7 +267,7 @@ jobs:
           {
             "family": "general-utils-app-service",
             "executionRoleArn":"arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:user/github-actions-user",
-            "taskRoleArn":"arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/ecs-task-execution-role",
+            "taskRoleArn":"arn:aws:ecs:${{ secrets.AWS_REGION }}:${{ secrets.AWS_ACCOUNT_ID }}:task-definition/general-utils-app-service",
             "containerDefinitions": [
               {
                 "name": "frontend",
@@ -319,5 +319,5 @@ jobs:
 
       - name: Deploy to ECS
         run: |
-          aws ecs register-task-definition --cli-input-json file://ecs-task-definition.json
+          aws ecs register-task-definition --cli-input-json file://ecs-task-definition.json 
           aws ecs update-service --cluster general-utils-app-cluster --service general-utils-app-service --force-new-deployment
