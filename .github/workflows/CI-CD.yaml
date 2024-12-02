@@ -57,6 +57,7 @@ jobs:
 
 
   build-and-push-docker-images-to-docker-hub:
+    needs: update-project-tree
     runs-on: ubuntu-latest
 
     steps:
@@ -207,18 +208,27 @@ jobs:
 
 
   deploy-to-ecs:
+    needs: build-and-push-docker-images-to-docker-hub
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Install latest AWS CLI
+        run: |
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install --update
+
       - name: Deploy to ECS
         run: |
           aws ecs register-task-definition --cli-input-json file://infrastructure/ecs-task-definition.json
-          aws ecs update-service --cluster general-utils-app-cluster --service general-utils-app-service --force-new-deployment
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-
+          aws ecs update-service --cluster general-utils-app-cluster --service general-utils-app-service --launch-type FARGATE --force-new-deployment
