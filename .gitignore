@@ -2,3 +2,5 @@ secrets
 secrets/*
 .DS_Store
 backend/.env
+infrastructure
+infrastructure/*
