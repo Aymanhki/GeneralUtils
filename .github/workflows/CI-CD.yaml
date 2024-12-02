@@ -173,8 +173,8 @@ jobs:
 
       - name: Build Docker Images
         run: |
-          docker buildx build -t backend:latest -t backend:${{ steps.backend-versioning.outputs.version }} ./backend
-          docker buildx build -t frontend:latest -t frontend:${{ steps.frontend-versioning.outputs.version }} ./frontend
+          docker buildx build --load -t backend:latest -t backend:${{ steps.backend-versioning.outputs.version }} ./backend
+          docker buildx build --load -t frontend:latest -t frontend:${{ steps.frontend-versioning.outputs.version }} ./frontend
 
       - name: Tag and Push Docker Images to Docker Hub
         run: |
