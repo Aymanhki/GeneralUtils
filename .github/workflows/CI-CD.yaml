@@ -266,8 +266,7 @@ jobs:
           cat <<EOF > ecs-task-definition.json
           {
             "family": "general-utils-app-service",
-            "executionRoleArn":"arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:user/github-actions-user",
-            "taskRoleArn":"arn:aws:ecs:${{ secrets.AWS_REGION }}:${{ secrets.AWS_ACCOUNT_ID }}:task-definition/general-utils-app-service",
+            "executionRoleArn": "arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/ecsTaskExecutionRole",
             "containerDefinitions": [
               {
                 "name": "frontend",
