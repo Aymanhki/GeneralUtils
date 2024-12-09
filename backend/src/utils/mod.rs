@@ -1,2 +1,2 @@
-mod token_generator;
-mod validator;
+pub mod validator;
+pub mod storage;

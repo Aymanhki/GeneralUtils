@@ -9,9 +9,14 @@ import { createNavBar } from "./NavBar.tsx";
 import { createFooter } from "./Footer.tsx";
 import { Donate } from "../pages/Donate.tsx";
 import { PageNotFound } from "../pages/PageNotFound.tsx";
+import { checkSession } from "../services/session-service.tsx";
+import { globals } from "../services/globals-service.tsx";
 
-export function Router(): void
+export async function Router(): Promise<void>
 {
+	const checkUser = await checkSession();
+	globals.setUser(checkUser);
+	
 	const path = window.location.pathname;
 	const app = document.getElementById( 'app' );
 	const nav = createNavBar();
@@ -59,6 +64,8 @@ export function Router(): void
 	{
 		console.error( 'App element not found' );
 	}
+	
+	
 }
 
 window.addEventListener( 'popstate', Router );

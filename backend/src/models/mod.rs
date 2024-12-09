@@ -1,2 +1,2 @@
-mod user_model;
-mod auth_model;
+pub mod user_model;
+pub mod auth_model;

@@ -78,6 +78,62 @@ p {
     min-height: 100vh;
 }
 
+
+form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+}
+
+input {
+    font-family: var(--font-family-text), sans-serif;
+    font-size: medium;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    border: 0.1rem solid var(--color-2);
+    background-color: var(--color-1);
+    color: var(--color-2);
+}
+
+input:focus {
+    border-color: var(--color-2);
+    box-shadow: 0 0 1rem var(--color-2);
+    transition: box-shadow var(--transition-duration) var(--transition-ease);
+}
+
+input::placeholder {
+    color: var(--color-2);
+}
+
+
+label {
+    font-family: var(--font-family-text), sans-serif;
+    font-size: large;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    justify-content: stretch;
+    align-content: stretch;
+    align-items: stretch;
+}
+
+.form-error {
+    color: red;
+    font-weight: bold;
+    font-size: xx-small;
+
+    /* make the text wrap */
+    white-space: pre-wrap;
+    word-break: break-all;
+
+}
+
 @media (prefers-color-scheme: dark) {
     :root {
         --color-1: #022b59;

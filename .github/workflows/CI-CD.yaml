@@ -1,322 +1,323 @@
-name: Update Project Tree
-
-on:
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - 'ProjectTree.md'
-
-jobs:
-  update-project-tree:
-    permissions:
-      contents: write
-
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up tree
-        run: sudo apt-get update && sudo apt-get install -y tree
-
-      - name: Generate Project Tree
-        run: |
-          # Create a function to format the tree output for Markdown
-          format_tree_for_markdown() {
-            tree -L 4 -I 'target|node_modules' | sed 's/^/    /'
-          }
-          
-          # Generate the tree
-          echo "# Project Structure" > ProjectTree.md
-          echo "\`\`\`" >> ProjectTree.md
-          format_tree_for_markdown >> ProjectTree.md
-          echo "\`\`\`" >> ProjectTree.md
-          echo "The command that was used to generate this tree is:" >> ProjectTree.md
-          echo "\`\`\`" >> ProjectTree.md
-          echo "tree -L 4 -I 'target|node_modules'" >> ProjectTree.md
-          echo "\`\`\`" >> ProjectTree.md
-
-      - name: Check for changes
-        id: check_changes
-        run: |
-          git diff --quiet ProjectTree.md || echo "changes_exist=true" >> $GITHUB_OUTPUT
-
-      - name: Commit and push changes
-        if: steps.check_changes.outputs.changes_exist == 'true'
-        env:
-          GENERAL_UTILS_GITHUB_ACCESS_TOKEN: ${{ secrets.GENERAL_UTILS_GITHUB_ACCESS_TOKEN }}
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add ProjectTree.md
-          git commit -m "Update project tree structure." -m "Automated update of project structure." --author="GitHub Action <action@github.com>"
-          git push https://${{ secrets.GENERAL_UTILS_GITHUB_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
-
-
-
-
-
-  build-and-push-images:
-    needs: update-project-tree
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Generate Backend Version Number
-        id: backend-versioning
-        run: |
-          # Fetch all tags from Docker Hub and sort them in descending order by version
-          tags=$(curl -s "https://registry.hub.docker.com/v2/repositories/${{ secrets.DOCKER_USERNAME }}/general-utils-backend/tags/" | jq -r '.results[].name' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
-          
-          # If there are no version tags, start with the default version
-          if [ -z "$tags" ]; then
-            tags="v0.0.0"
-          fi
-          
-          # Function to increment version
-          increment_version() {
-            local version="${1:-$default_version}"
-            local major=$(echo "$version" | cut -d'.' -f1 | sed 's/v//')
-            local minor=$(echo "$version" | cut -d'.' -f2)
-            local patch=$(echo "$version" | cut -d'.' -f3)
-          
-            if [ "$patch" -lt 9 ]; then
-              patch=$((patch+1))
-              new_version="v$major.$minor.$patch"
-            elif [ "$minor" -lt 9 ]; then
-              minor=$((minor+1))
-              patch=0
-              new_version="v$major.$minor.$patch"
-            else
-              major=$((major+1))
-              minor=0
-              patch=0
-              new_version="v$major.$minor.$patch"
-            fi
-          
-            echo "$new_version"
-          }
-          
-          # Determine new version based on latest versioned tag
-          version=$(increment_version "$tags")
-          
-          echo "Generated Version: $version"
-          echo "version=$version" >> $GITHUB_OUTPUT
-
-
-
-      - name: Generate Frontend Version Number
-        id: frontend-versioning
-        run: |
-          # Fetch all tags from Docker Hub and sort them in descending order by version
-          tags=$(curl -s "https://registry.hub.docker.com/v2/repositories/${{ secrets.DOCKER_USERNAME }}/general-utils-frontend/tags/" | jq -r '.results[].name' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
-          
-          # If there are no version tags, start with the default version
-          if [ -z "$tags" ]; then
-            tags="v0.0.0"
-          fi
-          
-          # Function to increment version
-          increment_version() {
-            local version="${1:-$default_version}"
-            local major=$(echo "$version" | cut -d'.' -f1 | sed 's/v//')
-            local minor=$(echo "$version" | cut -d'.' -f2)
-            local patch=$(echo "$version" | cut -d'.' -f3)
-          
-            if [ "$patch" -lt 9 ]; then
-              patch=$((patch+1))
-              new_version="v$major.$minor.$patch"
-            elif [ "$minor" -lt 9 ]; then
-              minor=$((minor+1))
-              patch=0
-              new_version="v$major.$minor.$patch"
-            else
-              major=$((major+1))
-              minor=0
-              patch=0
-              new_version="v$major.$minor.$patch"
-            fi
-          
-            echo "$new_version"
-          }
-          
-          # Determine new version based on latest versioned tag
-          version=$(increment_version "$tags")
-          
-          echo "Generated Version: $version"
-          echo "version=$version" >> $GITHUB_OUTPUT
-
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Login to AWS ECR
-        run: |
-          aws ecr get-login-password --region ${{secrets.AWS_REGION}} | docker login --username AWS --password-stdin ${{ secrets.ECR_REPO_URI }}
-
-      - name: Build Docker Images
-        run: |
-          docker buildx build --load -t backend:latest -t backend:${{ steps.backend-versioning.outputs.version }} ./backend
-          docker buildx build --load -t frontend:latest -t frontend:${{ steps.frontend-versioning.outputs.version }} ./frontend
-
-      - name: Tag and Push Docker Images to Docker Hub
-        run: |
-          docker tag backend:latest ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:latest
-          docker tag backend:${{ steps.backend-versioning.outputs.version }} ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:${{ steps.backend-versioning.outputs.version }}
-          docker push ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:latest
-          docker push ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:${{ steps.backend-versioning.outputs.version }}
-          docker tag frontend:latest ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:latest
-          docker tag frontend:${{ steps.frontend-versioning.outputs.version }} ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:${{ steps.frontend-versioning.outputs.version }}
-          docker push ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:latest
-          docker push ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:${{ steps.frontend-versioning.outputs.version }}
-
-      - name: Tag and Push Docker Images to AWS ECR
-        run: |
-          docker tag backend:latest ${{ secrets.ECR_REPO_URI }}/general-utils/backend:latest
-          docker tag backend:${{ steps.backend-versioning.outputs.version }} ${{ secrets.ECR_REPO_URI }}/general-utils/backend:${{ steps.backend-versioning.outputs.version }}
-          docker push ${{ secrets.ECR_REPO_URI }}/general-utils/backend:latest
-          docker push ${{ secrets.ECR_REPO_URI }}/general-utils/backend:${{ steps.backend-versioning.outputs.version }}
-          docker tag frontend:latest ${{ secrets.ECR_REPO_URI }}/general-utils/frontend:latest
-          docker tag frontend:${{ steps.frontend-versioning.outputs.version }} ${{ secrets.ECR_REPO_URI }}/general-utils/frontend:${{ steps.frontend-versioning.outputs.version }}
-          docker push ${{ secrets.ECR_REPO_URI }}/general-utils/frontend:latest
-          docker push ${{ secrets.ECR_REPO_URI }}/general-utils/frontend:${{ steps.frontend-versioning.outputs.version }}
-
-
-      - name: Determine Latest Version
-        id: determine-version
-        run: |
-          frontend_version=${{ steps.frontend-versioning.outputs.version }}
-          backend_version=${{ steps.backend-versioning.outputs.version }}
-
-          # Compare versions
-          if [ "$(printf "%s\n%s" "$frontend_version" "$backend_version" | sort -V | tail -n 1)" = "$frontend_version" ]; then
-            latest_version=$frontend_version
-          else
-            latest_version=$backend_version
-          fi
-
-          echo "latest_version=$latest_version" >> $GITHUB_ENV
-
-
-
-      - name: Zip Source Code
-        run: |
-          zip -r source-code-${{ env.latest_version }}.zip ./backend ./frontend
-
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: source-code-${{ env.latest_version }}
-          path: source-code-${{ env.latest_version }}.zip
-
-      - name: Create GitHub Release
-        uses: ncipollo/release-action@v1
-        with:
-          tag: ${{ env.latest_version }}
-          name: Release ${{ env.latest_version }}
-          body: |
-            This release includes:
-            - Frontend version: `${{ steps.frontend-versioning.outputs.version }}`
-            - Backend version: `${{ steps.backend-versioning.outputs.version }}`
-
-
-
-
-  deploy-to-ecs:
-    needs: build-and-push-images
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Install latest AWS CLI
-        run: |
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install --update
-
-      - name: Create ecs-task-definition.json
-        run: |
-          cat <<EOF > ecs-task-definition.json
-          {
-            "family": "general-utils-app-service",
-            "executionRoleArn": "arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/ecsTaskExecutionRole",
-            "containerDefinitions": [
-              {
-                "name": "frontend",
-                "image": "${{ secrets.ECR_REPO_URI }}/general-utils/frontend:latest",
-                "memory": 512,
-                "cpu": 256,
-                "essential": true,
-                "portMappings": [
-                  {
-                    "containerPort": 80,
-                    "hostPort": 80
-                  },
-                  {
-                    "containerPort": 443,
-                    "hostPort": 443
-                  },
-                  {
-                    "containerPort": 3000,
-                    "hostPort": 3000
-                  },
-                  {
-                    "containerPort": 5173,
-                    "hostPort": 5173
-                  }
-                ]
-              },
-              {
-                "name": "backend",
-                "image": "${{ secrets.ECR_REPO_URI }}/general-utils/backend:latest",
-                "memory": 512,
-                "cpu": 256,
-                "essential": true,
-                "portMappings": [
-                  {
-                    "containerPort": 8080,
-                    "hostPort": 8080
-                  }
-                ]
-              }
-            ],
-            "networkMode": "awsvpc",
-            "requiresCompatibilities": [
-              "FARGATE"
-            ],
-            "cpu": "512",
-            "memory": "1024"
-          }
-          EOF
-
-      - name: Deploy to ECS
-        run: |
-          aws ecs register-task-definition --cli-input-json file://ecs-task-definition.json 
-          aws ecs update-service --cluster general-utils-app-cluster --service general-utils-app-service --force-new-deployment
+#name: Update Project Tree
+#
+#on:
+#  push:
+#    branches:
+#      - main
+#    paths-ignore:
+#      - 'ProjectTree.md'
+#
+#jobs:
+#  update-project-tree:
+#    permissions:
+#      contents: write
+#
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#      - name: Checkout repository
+#        uses: actions/checkout@v4
+#
+#      - name: Set up tree
+#        run: sudo apt-get update && sudo apt-get install -y tree
+#
+#      - name: Generate Project Tree
+#        run: |
+#          # Create a function to format the tree output for Markdown
+#          format_tree_for_markdown() {
+#            tree -L 4 -I 'target|node_modules' | sed 's/^/    /'
+#          }
+#
+#          # Generate the tree
+#          echo "# Project Structure" > ProjectTree.md
+#          echo "\`\`\`" >> ProjectTree.md
+#          format_tree_for_markdown >> ProjectTree.md
+#          echo "\`\`\`" >> ProjectTree.md
+#          echo "The command that was used to generate this tree is:" >> ProjectTree.md
+#          echo "\`\`\`" >> ProjectTree.md
+#          echo "tree -L 4 -I 'target|node_modules'" >> ProjectTree.md
+#          echo "\`\`\`" >> ProjectTree.md
+#
+#      - name: Check for changes
+#        id: check_changes
+#        run: |
+#          git diff --quiet ProjectTree.md || echo "changes_exist=true" >> $GITHUB_OUTPUT
+#
+#      - name: Commit and push changes
+#        if: steps.check_changes.outputs.changes_exist == 'true'
+#        env:
+#          GENERAL_UTILS_GITHUB_ACCESS_TOKEN: ${{ secrets.GENERAL_UTILS_GITHUB_ACCESS_TOKEN }}
+#        run: |
+#          git config --local user.email "action@github.com"
+#          git config --local user.name "GitHub Action"
+#          git add ProjectTree.md
+#          git commit -m "Update project tree structure." -m "Automated update of project structure." --author="GitHub Action <action@github.com>"
+#          git push https://${{ secrets.GENERAL_UTILS_GITHUB_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
+#
+#
+#
+#
+#
+#  build-and-push-images:
+#    needs: update-project-tree
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#      - name: Checkout repository
+#        uses: actions/checkout@v4
+#
+#      - name: Set up Docker Buildx
+#        uses: docker/setup-buildx-action@v3
+#
+#      - name: Generate Backend Version Number
+#        id: backend-versioning
+#        run: |
+#          # Fetch all tags from Docker Hub and sort them in descending order by version
+#          tags=$(curl -s "https://registry.hub.docker.com/v2/repositories/${{ secrets.DOCKER_USERNAME }}/general-utils-backend/tags/" | jq -r '.results[].name' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+#
+#          # If there are no version tags, start with the default version
+#          if [ -z "$tags" ]; then
+#            tags="v0.0.0"
+#          fi
+#
+#          # Function to increment version
+#          increment_version() {
+#            local version="${1:-$default_version}"
+#            local major=$(echo "$version" | cut -d'.' -f1 | sed 's/v//')
+#            local minor=$(echo "$version" | cut -d'.' -f2)
+#            local patch=$(echo "$version" | cut -d'.' -f3)
+#
+#            if [ "$patch" -lt 9 ]; then
+#              patch=$((patch+1))
+#              new_version="v$major.$minor.$patch"
+#            elif [ "$minor" -lt 9 ]; then
+#              minor=$((minor+1))
+#              patch=0
+#              new_version="v$major.$minor.$patch"
+#            else
+#              major=$((major+1))
+#              minor=0
+#              patch=0
+#              new_version="v$major.$minor.$patch"
+#            fi
+#
+#            echo "$new_version"
+#          }
+#
+#          # Determine new version based on latest versioned tag
+#          version=$(increment_version "$tags")
+#
+#          echo "Generated Version: $version"
+#          echo "version=$version" >> $GITHUB_OUTPUT
+#
+#
+#
+#      - name: Generate Frontend Version Number
+#        id: frontend-versioning
+#        run: |
+#          # Fetch all tags from Docker Hub and sort them in descending order by version
+#          tags=$(curl -s "https://registry.hub.docker.com/v2/repositories/${{ secrets.DOCKER_USERNAME }}/general-utils-frontend/tags/" | jq -r '.results[].name' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+#
+#          # If there are no version tags, start with the default version
+#          if [ -z "$tags" ]; then
+#            tags="v0.0.0"
+#          fi
+#
+#          # Function to increment version
+#          increment_version() {
+#            local version="${1:-$default_version}"
+#            local major=$(echo "$version" | cut -d'.' -f1 | sed 's/v//')
+#            local minor=$(echo "$version" | cut -d'.' -f2)
+#            local patch=$(echo "$version" | cut -d'.' -f3)
+#
+#            if [ "$patch" -lt 9 ]; then
+#              patch=$((patch+1))
+#              new_version="v$major.$minor.$patch"
+#            elif [ "$minor" -lt 9 ]; then
+#              minor=$((minor+1))
+#              patch=0
+#              new_version="v$major.$minor.$patch"
+#            else
+#              major=$((major+1))
+#              minor=0
+#              patch=0
+#              new_version="v$major.$minor.$patch"
+#            fi
+#
+#            echo "$new_version"
+#          }
+#
+#          # Determine new version based on latest versioned tag
+#          version=$(increment_version "$tags")
+#
+#          echo "Generated Version: $version"
+#          echo "version=$version" >> $GITHUB_OUTPUT
+#
+#
+#      - name: Login to Docker Hub
+#        uses: docker/login-action@v3
+#        with:
+#          username: ${{ secrets.DOCKER_USERNAME }}
+#          password: ${{ secrets.DOCKER_PASSWORD }}
+#
+#      - name: Configure AWS credentials
+#        uses: aws-actions/configure-aws-credentials@v1
+#        with:
+#          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#          aws-region: ${{ secrets.AWS_REGION }}
+#
+#      - name: Login to AWS ECR
+#        run: |
+#          aws ecr get-login-password --region ${{secrets.AWS_REGION}} | docker login --username AWS --password-stdin ${{ secrets.ECR_REPO_URI }}
+#
+#      - name: Build Docker Images
+#        run: |
+#          docker buildx build --load -t backend:latest -t backend:${{ steps.backend-versioning.outputs.version }} ./backend
+#          docker buildx build --load -t frontend:latest -t frontend:${{ steps.frontend-versioning.outputs.version }} ./frontend
+#
+#      - name: Tag and Push Docker Images to Docker Hub
+#        run: |
+#          docker tag backend:latest ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:latest
+#          docker tag backend:${{ steps.backend-versioning.outputs.version }} ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:${{ steps.backend-versioning.outputs.version }}
+#          docker push ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:latest
+#          docker push ${{ secrets.DOCKER_USERNAME }}/general-utils-backend:${{ steps.backend-versioning.outputs.version }}
+#          docker tag frontend:latest ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:latest
+#          docker tag frontend:${{ steps.frontend-versioning.outputs.version }} ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:${{ steps.frontend-versioning.outputs.version }}
+#          docker push ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:latest
+#          docker push ${{ secrets.DOCKER_USERNAME }}/general-utils-frontend:${{ steps.frontend-versioning.outputs.version }}
+#
+#      - name: Tag and Push Docker Images to AWS ECR
+#        run: |
+#          docker tag backend:latest ${{ secrets.ECR_REPO_URI }}/general-utils/backend:latest
+#          docker tag backend:${{ steps.backend-versioning.outputs.version }} ${{ secrets.ECR_REPO_URI }}/general-utils/backend:${{ steps.backend-versioning.outputs.version }}
+#          docker push ${{ secrets.ECR_REPO_URI }}/general-utils/backend:latest
+#          docker push ${{ secrets.ECR_REPO_URI }}/general-utils/backend:${{ steps.backend-versioning.outputs.version }}
+#          docker tag frontend:latest ${{ secrets.ECR_REPO_URI }}/general-utils/frontend:latest
+#          docker tag frontend:${{ steps.frontend-versioning.outputs.version }} ${{ secrets.ECR_REPO_URI }}/general-utils/frontend:${{ steps.frontend-versioning.outputs.version }}
+#          docker push ${{ secrets.ECR_REPO_URI }}/general-utils/frontend:latest
+#          docker push ${{ secrets.ECR_REPO_URI }}/general-utils/frontend:${{ steps.frontend-versioning.outputs.version }}
+#
+#
+#      - name: Determine Latest Version
+#        id: determine-version
+#        run: |
+#          frontend_version=${{ steps.frontend-versioning.outputs.version }}
+#          backend_version=${{ steps.backend-versioning.outputs.version }}
+#
+#          # Compare versions
+#          if [ "$(printf "%s\n%s" "$frontend_version" "$backend_version" | sort -V | tail -n 1)" = "$frontend_version" ]; then
+#            latest_version=$frontend_version
+#          else
+#            latest_version=$backend_version
+#          fi
+#
+#          echo "latest_version=$latest_version" >> $GITHUB_ENV
+#
+#
+#
+#      - name: Zip Source Code
+#        run: |
+#          zip -r source-code-${{ env.latest_version }}.zip ./backend ./frontend
+#
+#
+#      - name: Upload Artifact
+#        uses: actions/upload-artifact@v3
+#        with:
+#          name: source-code-${{ env.latest_version }}
+#          path: source-code-${{ env.latest_version }}.zip
+#
+#      - name: Create GitHub Release
+#        uses: ncipollo/release-action@v1
+#        with:
+#          tag: ${{ env.latest_version }}
+#          name: Release ${{ env.latest_version }}
+#          body: |
+#            This release includes:
+#            - Frontend version: `${{ steps.frontend-versioning.outputs.version }}`
+#            - Backend version: `${{ steps.backend-versioning.outputs.version }}`
+#
+#
+#
+#
+#  deploy-to-ecs:
+#    needs: build-and-push-images
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#      - name: Checkout repository
+#        uses: actions/checkout@v4
+#
+#      - name: Configure AWS credentials
+#        uses: aws-actions/configure-aws-credentials@v1
+#        with:
+#          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#          aws-region: ${{ secrets.AWS_REGION }}
+#
+#      - name: Install latest AWS CLI
+#        run: |
+#          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+#          unzip awscliv2.zip
+#          sudo ./aws/install --update
+#
+#      - name: Create ecs-task-definition.json
+#        run: |
+#          cat <<EOF > ecs-task-definition.json
+#          {
+#            "family": "general-utils-app",
+#            "executionRoleArn": "arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/ecsTaskExecutionRole",
+#            "containerDefinitions": [
+#              {
+#                "name": "frontend",
+#                "image": "${{ secrets.ECR_REPO_URI }}/general-utils/frontend:latest",
+#                "memory": 512,
+#                "cpu": 256,
+#                "essential": true,
+#                "portMappings": [
+#                  {
+#                    "containerPort": 80,
+#                    "hostPort": 80
+#                  },
+#                  {
+#                    "containerPort": 443,
+#                    "hostPort": 443
+#                  },
+#                  {
+#                    "containerPort": 3000,
+#                    "hostPort": 3000
+#                  },
+#                  {
+#                    "containerPort": 5173,
+#                    "hostPort": 5173
+#                  }
+#                ]
+#              },
+#              {
+#                "name": "backend",
+#                "image": "${{ secrets.ECR_REPO_URI }}/general-utils/backend:latest",
+#                "memory": 512,
+#                "cpu": 256,
+#                "essential": true,
+#                "portMappings": [
+#                  {
+#                    "containerPort": 8080,
+#                    "hostPort": 8080
+#                  }
+#                ]
+#              }
+#            ],
+#            "networkMode": "bridge",
+#            "requiresCompatibilities": [
+#                "EC2"
+#            ],
+#            "cpu": "512",
+#            "memory": "1024"
+#          }
+#          EOF
+#
+#      - name: Deploy to ECS
+#        run: |
+#          NEW_TASK_DEF_ARN=$(aws ecs register-task-definition --cli-input-json file://ecs-task-definition.json --query'taskDefinition.taskDefinitionArn' --output text)
+#          aws ecs update-service --cluster general-utils-app-cluster --service general-utils-app-service --task-definition $NEW_TASK_DEF_ARN --force-new-deployment
+#

@@ -19,15 +19,5 @@ export function SignIn(): HTMLElement
 		Router();
 	};
 	
-	
-	// const signupBtn = document.createElement('button');
-	// signupBtn.innerHTML = 'Sign Up';
-	// signupBtn.onclick = () => {
-	// 	window.history.pushState( {}, '', '/signup' );
-	// 	Router();
-	// };
-	//
-	// element.appendChild(signupBtn);
-	
 	return element;
 }
