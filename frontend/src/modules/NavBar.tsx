@@ -31,7 +31,12 @@ export function createNavBar(): HTMLElement
 	                    <a href="/board" data-link>Board</a>
 	                    <a href="/download-media" data-link>Download Link</a>
 	                    ${ !globals.user ? `<a href="/donate" data-link>Donate</a>` : '' }
-	                    ${ globals.user ? `<img src="/assets/images/default_pfp.svg" alt="Profile Picture" class="pfp-img">` : `<a href="/signin" data-link>Sign In</a>` }
+	                    ${ globals.user ? `
+							${ globals.isDarkMode ?
+							`<img src="/assets/images/default_pfp-for-dark-mode.svg" alt="Profile Picture" class="pfp-img">` :
+							`<img src="/assets/images/default_pfp-for-light-mode.svg" alt="Profile Picture" class="pfp-img">` }` :
+			
+							`<a href="/signin" data-link>Sign In</a>` }
 	                </div>
             	</div>
 			`
@@ -45,7 +50,13 @@ export function createNavBar(): HTMLElement
 				<a href="/board" data-link>Board</a>
 				<a href="/download-media" data-link>Download Link</a>
 				${ !globals.user ? `<a href="/donate" data-link>Donate</a>` : '' }
-				${ globals.user ? `<img src="/assets/images/default_pfp.svg" alt="Profile Picture" class="pfp-img">` : `<a href="/signin" data-link>Sign In</a>` }
+				
+				${ globals.user ? `
+					${ globals.isDarkMode ?
+					`<img src="/assets/images/default_pfp-for-dark-mode.svg" alt="Profile Picture" class="pfp-img">` :
+					`<img src="/assets/images/default_pfp-for-light-mode.svg" alt="Profile Picture" class="pfp-img">` }` :
+	
+					`<a href="/signin" data-link>Sign In</a>` }
 			</div>
 			`
 	}
