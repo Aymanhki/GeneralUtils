@@ -14,8 +14,12 @@ import { globals } from "../services/globals-service.tsx";
 
 export async function Router(): Promise<void>
 {
-	const checkUser = await checkSession();
-	globals.setUser(checkUser);
+	const checkUser = await checkSession().then(( data) => {return data;}).catch(() => {return null;});
+	
+	if (checkUser !== null)
+	{
+		globals.setUser( checkUser );
+	}
 	
 	const path = window.location.pathname;
 	const app = document.getElementById( 'app' );

@@ -9,8 +9,6 @@ async fn sign_up(pool: web::Data<PgPool>, new_user: web::Json<NewUser>) -> impl 
 
     match AuthService::sign_up(&pool, new_user.into_inner()).await {
         Ok(session) => {
-
-
             HttpResponse::Ok().json(session)
         }
         Err(err) => HttpResponse::BadRequest().body(err),
@@ -19,10 +17,14 @@ async fn sign_up(pool: web::Data<PgPool>, new_user: web::Json<NewUser>) -> impl 
 
 #[post("/sign-in")]
 async fn sign_in(pool: web::Data<PgPool>, credentials: web::Json<NewUser>) -> impl Responder {
+
     match AuthService::sign_in(&pool, &credentials.username, &credentials.password).await {
-        Ok(session) => HttpResponse::Ok().cookie(actix_web::cookie::Cookie::build("session_id", session.session_id.to_string()).finish()).json(session),
+        Ok(session) => {
+            HttpResponse::Ok().json(session)
+        }
         Err(err) => HttpResponse::Unauthorized().body(err),
     }
+
 }
 
 #[get("/check-session")]

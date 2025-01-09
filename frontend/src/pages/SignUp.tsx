@@ -8,6 +8,7 @@ async function onSubmit(event: Event): Promise<void> {
 	const usernameInput = form.querySelector('#username') as HTMLInputElement;
 	const passwordInput = form.querySelector('#password') as HTMLInputElement;
 	const confirmPasswordInput = form.querySelector('#confirm-password') as HTMLInputElement;
+	const formError = document.querySelector('.sign-up-form-error') as HTMLElement;
 	
 	usernameInput.setCustomValidity('');
 	passwordInput.setCustomValidity('');
@@ -42,7 +43,6 @@ async function onSubmit(event: Event): Promise<void> {
 			Router();
 		})
 		.catch((error) => {
-			const formError = form.querySelector('.form-error') as HTMLElement;
 			formError.textContent = error.message;
 		});
 }
@@ -54,7 +54,7 @@ export function SignUp(): HTMLElement {
 	element.innerHTML = `
 		<div class="page">
 			<form id="signup-form" novalidate>
-				<h1>Sign Up Page</h1>
+				<h1>Sign Up</h1>
 				<div class="form-group">
 					<label for="username">Username:</label>
 					<input type="text" id="username" name="username" required minlength="3" pattern="^[A-Za-z0-9]+$">
@@ -69,13 +69,13 @@ export function SignUp(): HTMLElement {
 				</div>
 				
 				<div class="form-group">
-					<p class="form-error"></p>
 				</div>
 				
 				<button type="submit">Sign Up</button>
 				
-				
 			</form>
+			
+			<p class="sign-up-form-error"></p>
 		</div>
 	`;
 	

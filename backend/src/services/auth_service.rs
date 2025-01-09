@@ -21,6 +21,7 @@ impl AuthService {
 
     pub async fn sign_in(pool: &PgPool, username: &str, password: &str) -> Result<Session, String> {
         let user = UserRepository::find_user_by_username(pool, username).await.map_err(|e| e.to_string())?;
+
         if let Some(user) = user {
             if verify(password, &user.password).unwrap_or(false) {
                 let session = UserRepository::create_session(pool, user.id).await.map_err(|e| e.to_string())?;

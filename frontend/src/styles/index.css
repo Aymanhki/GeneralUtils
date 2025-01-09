@@ -76,6 +76,7 @@ p {
     align-items: center;
     justify-content: center;
     min-height: 100vh;
+    gap: 1rem;
 }
 
 
@@ -134,6 +135,20 @@ label {
 
 }
 
+.hyper-link-text {
+    text-decoration: underline;
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-weight: bold;
+    transition: filter var(--transition-duration) var(--transition-ease);
+}
+
+.hyper-link-text:hover {
+    filter: drop-shadow(0 0 1rem var(--color-2));
+    transition: filter var(--transition-duration) var(--transition-ease);
+    cursor: pointer;
+}
+
 @media (prefers-color-scheme: dark) {
     :root {
         --color-1: #022b59;
@@ -152,6 +167,18 @@ label {
         letter-spacing: 0.1rem;
     }
 
+    input {
+        font-size: small;
+        padding: 0.4rem;
+    }
+
+    p {
+        font-size: small;
+    }
+
+    label {
+        font-size: small;
+    }
 }
 
 @media (max-width: 960px) {
